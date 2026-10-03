@@ -1,15 +1,14 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { store, type ExportData, type ProfileSettings } from '../data'
-import { useQuery } from '../data/useQuery'
 import { PageHeader } from '../components/Layout'
 import { beep, canVibrate, unlockAudio, vibrate } from '../lib/alerts'
 import { download, toCsv } from '../lib/exportFile'
+import { formatSyncState } from '../lib/format'
 import { useProfile } from '../state/ProfileContext'
 
 export function SettingsPage() {
-  const { profile, setProfileId } = useProfile()
-  const profiles = useQuery(() => store.listProfiles(), [])
+  const { profile, email, sync, syncNow, signIn, signOut, deleteAllData } = useProfile()
   const fileRef = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('')
 
@@ -42,18 +41,10 @@ export function SettingsPage() {
     const name = prompt('Profile name', profile.name)
     if (name?.trim()) void store.saveProfile({ ...profile, name: name.trim() })
   }
-  const newProfile = async () => {
-    const name = prompt('New profile name')
-    if (!name?.trim()) return
-    const p = await store.createProfile(name.trim())
-    setProfileId(p.id)
-  }
-  const deleteProfile = async () => {
-    if (!confirm(`Delete profile “${profile.name}” and ALL its data? This cannot be undone.`)) return
+  const deleteData = async () => {
+    if (!confirm(`Delete “${profile.name}” and ALL workouts from this device and the cloud? This cannot be undone.`)) return
     if (prompt('Type DELETE to confirm') !== 'DELETE') return
-    const id = profile.id
-    setProfileId(null)
-    await store.deleteProfile(id)
+    await deleteAllData()
   }
 
   const s = profile.settings
@@ -69,26 +60,37 @@ export function SettingsPage() {
             Rename
           </button>
         </div>
-        {profiles && profiles.length > 1 && (
-          <label>
-            Switch profile
-            <select value={profile.id} onChange={(e) => setProfileId(e.target.value)}>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
+        <p className="muted small">Signed in as {email}</p>
+      </section>
+
+      <section className="card">
+        <h2>Cloud sync</h2>
+        {sync ? (
+          <>
+            <p className="small">{formatSyncState(sync)}</p>
+            {sync.error && <p className="small">⚠️ {sync.error}</p>}
+            <div className="row gap wrap">
+              <button className="btn" onClick={syncNow} disabled={sync.status === 'syncing'}>
+                Sync now
+              </button>
+              <button className="btn" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="small">Not signed in – changes are kept on this device and synced after you sign in.</p>
+            <div className="row gap wrap">
+              <button className="btn primary" onClick={signIn}>
+                Sign in with Google
+              </button>
+              <button className="btn" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          </>
         )}
-        <div className="row gap wrap">
-          <button className="btn" onClick={newProfile}>
-            + New profile
-          </button>
-          <button className="btn" onClick={() => setProfileId(null)}>
-            Sign out
-          </button>
-        </div>
       </section>
 
       <section className="card form">
@@ -157,7 +159,7 @@ export function SettingsPage() {
 
       <section className="card">
         <h2>Data</h2>
-        <p className="muted small">Data is stored on this device only. Export regularly to keep a backup.</p>
+        <p className="muted small">Your data is synced to the cloud. You can also export a copy at any time.</p>
         <div className="row gap wrap">
           <button className="btn" onClick={exportJson}>
             Export backup (JSON)
@@ -175,8 +177,8 @@ export function SettingsPage() {
 
       <section className="card">
         <h2>Danger zone</h2>
-        <button className="btn danger" onClick={deleteProfile}>
-          Delete profile
+        <button className="btn danger" onClick={deleteData}>
+          Delete all my data
         </button>
       </section>
     </>

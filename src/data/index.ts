@@ -1,8 +1,9 @@
 import { DexieStore } from './dexieStore'
 import type { DataStore } from './store'
 
-// Swap this for a hosted implementation (e.g. `new SupabaseStore(...)`) later.
-export const store: DataStore = new DexieStore()
+// Local-first: the UI always reads/writes IndexedDB; src/sync/ syncs it with Supabase in the background.
+export const localStore = new DexieStore()
+export const store: DataStore = localStore
 
 export type { DataStore } from './store'
 export * from './types'

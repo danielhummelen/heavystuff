@@ -13,6 +13,19 @@ import {
 } from './types'
 import { newId } from '../lib/id'
 
+export const SYNC_TABLES = ['profiles', 'exercises', 'templates', 'sessions', 'sessionExercises', 'sets'] as const
+export type SyncTable = (typeof SYNC_TABLES)[number]
+export type SyncRecord = Profile | Exercise | Template | Session | SessionExercise | WorkoutSet
+
+/** A locally changed record that still has to be pushed. The row's current state is read at push time. */
+export interface OutboxEntry {
+  key: string
+  table: SyncTable
+  id: string
+  profileId: string
+  token: string
+}
+
 class HeavyDB extends Dexie {
   profiles!: Table<Profile, string>
   exercises!: Table<Exercise, string>
@@ -20,6 +33,8 @@ class HeavyDB extends Dexie {
   sessions!: Table<Session, string>
   sessionExercises!: Table<SessionExercise, string>
   sets!: Table<WorkoutSet, string>
+  outbox!: Table<OutboxEntry, string>
+  meta!: Table<{ key: string; value: unknown }, string>
 
   constructor(name: string) {
     super(name)
@@ -30,6 +45,10 @@ class HeavyDB extends Dexie {
       sessions: 'id, profileId, [profileId+status]',
       sessionExercises: 'id, sessionId, profileId',
       sets: 'id, sessionId, sessionExerciseId, exerciseId, profileId, [profileId+exerciseId]',
+    })
+    this.version(2).stores({
+      outbox: 'key, profileId',
+      meta: 'key',
     })
   }
 }
@@ -63,6 +82,29 @@ export class DexieStore implements DataStore {
     this.channel?.postMessage('changed')
   }
 
+  /** Runs `fn` in a read-write transaction that also covers the outbox. */
+  private write<T>(tables: SyncTable[], fn: () => Promise<T>) {
+    return this.db.transaction('rw', [...tables.map((t) => this.db[t]), this.db.outbox], fn)
+  }
+
+  /** Records changed (or deleted) rows so the sync engine pushes them. Must run inside `write`. */
+  private track(table: SyncTable, rows: { id: string; profileId?: string }[]) {
+    if (!rows.length) return Promise.resolve()
+    return this.db.outbox.bulkPut(
+      rows.map((r) => ({ key: `${table}:${r.id}`, table, id: r.id, profileId: r.profileId ?? r.id, token: newId() })),
+    )
+  }
+
+  private async putTracked<T extends SyncRecord>(table: SyncTable, rows: T[]) {
+    await (this.db[table] as Table<T, string>).bulkPut(rows)
+    await this.track(table, rows)
+  }
+
+  private async deleteTracked(table: SyncTable, rows: { id: string; profileId?: string }[]) {
+    await this.db[table].bulkDelete(rows.map((r) => r.id))
+    await this.track(table, rows)
+  }
+
   // Profiles
   listProfiles() {
     return this.db.profiles.toArray().then((p) => p.sort((a, b) => a.createdAt - b.createdAt))
@@ -92,26 +134,24 @@ export class DexieStore implements DataStore {
       createdAt: now,
       updatedAt: now,
     }))
-    await this.db.transaction('rw', this.db.profiles, this.db.exercises, async () => {
-      await this.db.profiles.add(profile)
-      await this.db.exercises.bulkAdd(exercises)
+    await this.write(['profiles', 'exercises'], async () => {
+      await this.putTracked('profiles', [profile])
+      await this.putTracked('exercises', exercises)
     })
     this.changed()
     return profile
   }
   async saveProfile(profile: Profile) {
-    await this.db.profiles.put({ ...profile, updatedAt: Date.now() })
+    await this.write(['profiles'], () => this.putTracked('profiles', [{ ...profile, updatedAt: Date.now() }]))
     this.changed()
   }
   async deleteProfile(id: string) {
     const d = this.db
-    await d.transaction('rw', [d.profiles, d.exercises, d.templates, d.sessions, d.sessionExercises, d.sets], async () => {
-      await d.sets.where('profileId').equals(id).delete()
-      await d.sessionExercises.where('profileId').equals(id).delete()
-      await d.sessions.where('profileId').equals(id).delete()
-      await d.templates.where('profileId').equals(id).delete()
-      await d.exercises.where('profileId').equals(id).delete()
-      await d.profiles.delete(id)
+    await this.write(['profiles', 'exercises', 'templates', 'sessions', 'sessionExercises', 'sets'], async () => {
+      for (const t of ['sets', 'sessionExercises', 'sessions', 'templates', 'exercises'] as const) {
+        await this.deleteTracked(t, await d[t].where('profileId').equals(id).toArray())
+      }
+      await this.deleteTracked('profiles', [{ id }])
     })
     this.changed()
   }
@@ -125,11 +165,11 @@ export class DexieStore implements DataStore {
     return this.db.exercises.get(id)
   }
   async saveExercise(exercise: Exercise) {
-    await this.db.exercises.put({ ...exercise, updatedAt: Date.now() })
+    await this.write(['exercises'], () => this.putTracked('exercises', [{ ...exercise, updatedAt: Date.now() }]))
     this.changed()
   }
   async deleteExercise(id: string) {
-    await this.db.exercises.delete(id)
+    await this.write(['exercises'], async () => this.deleteTracked('exercises', await this.db.exercises.where('id').equals(id).toArray()))
     this.changed()
   }
   countSetsForExercise(exerciseId: string) {
@@ -145,11 +185,11 @@ export class DexieStore implements DataStore {
     return this.db.templates.get(id)
   }
   async saveTemplate(template: Template) {
-    await this.db.templates.put({ ...template, updatedAt: Date.now() })
+    await this.write(['templates'], () => this.putTracked('templates', [{ ...template, updatedAt: Date.now() }]))
     this.changed()
   }
   async deleteTemplate(id: string) {
-    await this.db.templates.delete(id)
+    await this.write(['templates'], async () => this.deleteTracked('templates', await this.db.templates.where('id').equals(id).toArray()))
     this.changed()
   }
 
@@ -165,15 +205,15 @@ export class DexieStore implements DataStore {
     return this.db.sessions.get(id)
   }
   async saveSession(session: Session) {
-    await this.db.sessions.put({ ...session, updatedAt: Date.now() })
+    await this.write(['sessions'], () => this.putTracked('sessions', [{ ...session, updatedAt: Date.now() }]))
     this.changed()
   }
   async deleteSession(id: string) {
     const d = this.db
-    await d.transaction('rw', d.sessions, d.sessionExercises, d.sets, async () => {
-      await d.sets.where('sessionId').equals(id).delete()
-      await d.sessionExercises.where('sessionId').equals(id).delete()
-      await d.sessions.delete(id)
+    await this.write(['sessions', 'sessionExercises', 'sets'], async () => {
+      await this.deleteTracked('sets', await d.sets.where('sessionId').equals(id).toArray())
+      await this.deleteTracked('sessionExercises', await d.sessionExercises.where('sessionId').equals(id).toArray())
+      await this.deleteTracked('sessions', await d.sessions.where('id').equals(id).toArray())
     })
     this.changed()
   }
@@ -185,14 +225,14 @@ export class DexieStore implements DataStore {
   }
   async saveSessionExercises(items: SessionExercise[]) {
     const now = Date.now()
-    await this.db.sessionExercises.bulkPut(items.map((i) => ({ ...i, updatedAt: now })))
+    await this.write(['sessionExercises'], () => this.putTracked('sessionExercises', items.map((i) => ({ ...i, updatedAt: now }))))
     this.changed()
   }
   async deleteSessionExercise(id: string) {
     const d = this.db
-    await d.transaction('rw', d.sessionExercises, d.sets, async () => {
-      await d.sets.where('sessionExerciseId').equals(id).delete()
-      await d.sessionExercises.delete(id)
+    await this.write(['sessionExercises', 'sets'], async () => {
+      await this.deleteTracked('sets', await d.sets.where('sessionExerciseId').equals(id).toArray())
+      await this.deleteTracked('sessionExercises', await d.sessionExercises.where('id').equals(id).toArray())
     })
     this.changed()
   }
@@ -210,11 +250,11 @@ export class DexieStore implements DataStore {
     return this.db.sets.where('profileId').equals(profileId).toArray()
   }
   async saveSet(set: WorkoutSet) {
-    await this.db.sets.put({ ...set, updatedAt: Date.now() })
+    await this.write(['sets'], () => this.putTracked('sets', [{ ...set, updatedAt: Date.now() }]))
     this.changed()
   }
   async deleteSet(id: string) {
-    await this.db.sets.delete(id)
+    await this.write(['sets'], async () => this.deleteTracked('sets', await this.db.sets.where('id').equals(id).toArray()))
     this.changed()
   }
 
@@ -256,7 +296,9 @@ export class DexieStore implements DataStore {
       const existing = await d.exercises.where('profileId').equals(profileId).toArray()
       data = remapIds(input, new Map(existing.map((e) => [e.name.trim().toLowerCase(), e.id])))
     }
-    const own = <T extends { profileId: string }>(rows: T[]) => rows.map((r) => ({ ...r, profileId }))
+    // Bump updatedAt so restored rows win over older copies on the server.
+    const now = Date.now()
+    const own = <T extends { profileId: string }>(rows: T[]) => rows.map((r) => ({ ...r, profileId, updatedAt: now }))
     // Avoid two active sessions after import.
     const hasActive = await this.getActiveSession(profileId)
     const sessions = own(data.sessions).map((s) =>
@@ -264,12 +306,77 @@ export class DexieStore implements DataStore {
         ? { ...s, status: 'done' as const, endedAt: s.endedAt ?? s.startedAt }
         : s,
     )
-    await d.transaction('rw', [d.exercises, d.templates, d.sessions, d.sessionExercises, d.sets], async () => {
-      await d.exercises.bulkPut(own(data.exercises))
-      await d.templates.bulkPut(own(data.templates))
-      await d.sessions.bulkPut(sessions)
-      await d.sessionExercises.bulkPut(own(data.sessionExercises))
-      await d.sets.bulkPut(own(data.sets))
+    await this.write(['exercises', 'templates', 'sessions', 'sessionExercises', 'sets'], async () => {
+      await this.putTracked('exercises', own(data.exercises))
+      await this.putTracked('templates', own(data.templates))
+      await this.putTracked('sessions', sessions)
+      await this.putTracked('sessionExercises', own(data.sessionExercises))
+      await this.putTracked('sets', own(data.sets))
+    })
+    this.changed()
+  }
+
+  // Sync support (used by src/sync/syncEngine.ts, not part of the UI-facing DataStore contract)
+
+  listOutbox(profileId: string) {
+    return this.db.outbox.where('profileId').equals(profileId).toArray()
+  }
+  countOutbox(profileId: string) {
+    return this.db.outbox.where('profileId').equals(profileId).count()
+  }
+  getRows(table: SyncTable, ids: string[]): Promise<(SyncRecord | undefined)[]> {
+    return this.db[table].bulkGet(ids)
+  }
+  /** Removes pushed outbox entries, unless the row changed again while the push was in flight. */
+  async ackOutbox(entries: OutboxEntry[]) {
+    await this.db.transaction('rw', this.db.outbox, async () => {
+      const current = await this.db.outbox.bulkGet(entries.map((e) => e.key))
+      const done = entries.filter((e, i) => current[i]?.token === e.token).map((e) => e.key)
+      await this.db.outbox.bulkDelete(done)
+    })
+  }
+  /** Queues every row of a profile for upload (used when moving an existing local profile to the cloud). */
+  async enqueueProfile(profileId: string) {
+    await this.write([...SYNC_TABLES], async () => {
+      await this.track('profiles', [{ id: profileId }])
+      for (const t of SYNC_TABLES) {
+        if (t !== 'profiles') await this.track(t, await this.db[t].where('profileId').equals(profileId).toArray())
+      }
+    })
+  }
+  /** Applies rows/deletions pulled from the server. Rows with unpushed local changes are left alone. */
+  async applyRemote(table: SyncTable, rows: SyncRecord[], deletedIds: string[] = []) {
+    if (!rows.length && !deletedIds.length) return
+    let applied = 0
+    await this.write([table], async () => {
+      const pending = await this.db.outbox.bulkGet([...rows.map((r) => r.id), ...deletedIds].map((id) => `${table}:${id}`))
+      const isPending = new Set(pending.filter(Boolean).map((e) => e!.id))
+      const existing = await this.db[table].bulkGet(rows.map((r) => r.id))
+      // Skip rows we already have in this version (e.g. our own pushes echoed back).
+      const put = rows.filter((r, i) => !isPending.has(r.id) && existing[i]?.updatedAt !== r.updatedAt)
+      const del = deletedIds.filter((id) => !isPending.has(id))
+      await (this.db[table] as Table<SyncRecord, string>).bulkPut(put)
+      await this.db[table].bulkDelete(del)
+      applied = put.length + del.length
+    })
+    if (applied) this.changed()
+  }
+  async getMeta<T>(key: string): Promise<T | undefined> {
+    return (await this.db.meta.get(key))?.value as T | undefined
+  }
+  async setMeta(key: string, value: unknown) {
+    await this.db.meta.put({ key, value })
+  }
+  /** Removes a profile's local copy without queuing remote deletes (e.g. on sign-out). */
+  async purgeLocalProfile(profileId: string) {
+    const d = this.db
+    await d.transaction('rw', [...SYNC_TABLES.map((t) => d[t]), d.outbox, d.meta], async () => {
+      for (const t of SYNC_TABLES) {
+        if (t !== 'profiles') await d[t].where('profileId').equals(profileId).delete()
+      }
+      await d.profiles.delete(profileId)
+      await d.outbox.where('profileId').equals(profileId).delete()
+      await d.meta.where('key').startsWith(`cursor:${profileId}:`).delete()
     })
     this.changed()
   }

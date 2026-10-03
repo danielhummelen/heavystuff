@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useProfile } from '../state/ProfileContext'
 import { RestTimerBar } from './RestTimerBar'
 
 const tabs = [
@@ -9,9 +10,19 @@ const tabs = [
 ]
 
 export function Layout() {
+  const { sync, signIn } = useProfile()
   return (
     <div className="app">
       <main className="content">
+        {!sync && (
+          <div className="banner small">
+            Not signed in – changes are kept on this device until you{' '}
+            <button className="link-btn" onClick={signIn}>
+              sign in again
+            </button>
+            .
+          </div>
+        )}
         <Outlet />
       </main>
       <RestTimerBar />

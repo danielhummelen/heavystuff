@@ -3,7 +3,6 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { ExercisesPage } from './pages/ExercisesPage'
 import { HistoryPage } from './pages/HistoryPage'
-import { ProfileSelect } from './pages/ProfileSelect'
 import { SessionPage } from './pages/SessionPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TemplateEditPage } from './pages/TemplateEditPage'
@@ -19,7 +18,7 @@ const ExerciseDetailPage = lazy(() => import('./pages/ExerciseDetailPage').then(
 export default function App() {
   return (
     <HashRouter>
-      <ProfileProvider fallback={(select) => <ProfileSelect onSelect={select} />}>
+      <ProfileProvider>
         <RestTimerProvider>
           <Routes>
             <Route element={<Layout />}>

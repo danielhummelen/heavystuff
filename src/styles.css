@@ -774,3 +774,12 @@ input[type='datetime-local'] {
   margin: 0;
   white-space: pre-wrap;
 }
+.banner {
+  background: var(--accent-soft);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+.banner .link-btn {
+  padding: 0;
+}

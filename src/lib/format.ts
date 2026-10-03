@@ -44,3 +44,11 @@ export function defaultSessionName(ts: number): string {
   const part = h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : 'Evening'
   return `${part} workout`
 }
+
+export function formatSyncState(s: { status: string; pending: number; lastSyncedAt: number | null }): string {
+  const pending = s.pending ? ` · ${s.pending} change${s.pending === 1 ? '' : 's'} waiting` : ''
+  if (s.status === 'syncing') return `Syncing…${pending}`
+  if (s.status === 'offline') return `Offline – will sync when back online${pending}`
+  if (s.status === 'error') return `Sync failed${pending}`
+  return s.lastSyncedAt ? `✔ Synced at ${formatTime(s.lastSyncedAt)}${pending}` : `Not synced yet${pending}`
+}
