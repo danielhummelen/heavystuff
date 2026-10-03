@@ -22,6 +22,16 @@ npm test           # unit tests
 npm run build      # production build in dist/ (static, deploy anywhere)
 ```
 
+## Workflow for changes
+1. **Branch**: `git switch -c feature/<name>` (optional for small fixes, but gives you a Vercel preview URL).
+2. **Develop**: `npm run dev`, make the change. AI agents: see [`AGENTS.md`](AGENTS.md).
+3. **Database changes**: add a *new* file `supabase/migrations/<YYYYMMDDHHMMSS>_<name>.sql` (never edit applied ones)
+   and update `src/data/types.ts` + `src/sync/remote.ts`. Keep new columns nullable or defaulted.
+4. **Check**: `npm run build && npm test && npm run lint`.
+5. **Commit & push**; check the Vercel preview deployment if on a branch.
+6. **Apply migrations** in the Supabase SQL editor *before* merging code that needs them.
+7. **Merge to `main`** → Vercel deploys to https://heavystuff.vercel.app automatically.
+
 ## Architecture
 - React + TypeScript + Vite, `vite-plugin-pwa`, Recharts, HashRouter (works on any static host).
 - `src/data/store.ts` – `DataStore` interface. **All UI data access goes through it.**
