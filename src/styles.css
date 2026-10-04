@@ -1,14 +1,32 @@
+/* Palette – every color in the app comes from these variables (charts in TSX use them too).
+   Theme color for the browser/PWA lives in index.html + vite.config.ts.
+   Previous (blue/grey): bg #f4f5f7, card #fff, field #f9fafb, text #16181d, muted #6b7280,
+   border #e5e7eb, accent #2563eb, accent-soft #e0eaff, inverse #111827 */
 :root {
-  --bg: #f4f5f7;
-  --card: #ffffff;
-  --text: #16181d;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --accent: #2563eb;
-  --accent-soft: #e0eaff;
+  /* surfaces */
+  --bg: #f3efe5;
+  --card: #fbf9f3;
+  --field: #f5f1e7;
+  --border: #e2dccd;
+  /* text */
+  --text: #1c2826;
+  --muted: #6b716a;
+  /* brand */
+  --accent: #0f766e;
+  --accent-soft: #d6ebe6;
+  --on-accent: #ffffff;
+  /* dark surface (rest timer bar) */
+  --inverse: #133432;
+  --on-inverse: #ffffff;
+  /* status */
   --danger: #dc2626;
+  --danger-soft: #fecaca;
   --success: #16a34a;
+  --success-soft: #dcfce7;
   --gold: #b45309;
+  --gold-soft: #fef3c7;
+  /* shadows / overlays */
+  --shadow: rgb(0 0 0);
   --radius: 14px;
   --tabbar-h: 60px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -127,7 +145,7 @@ a {
   background: var(--card);
   border-radius: var(--radius);
   padding: 14px;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 5%, transparent);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -207,11 +225,11 @@ ol.list.card {
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .btn.danger {
   color: var(--danger);
-  border-color: #fecaca;
+  border-color: var(--danger-soft);
 }
 .btn.block {
   display: flex;
@@ -295,7 +313,7 @@ ol.list.card {
   background: var(--card);
   color: var(--text);
   font-weight: 600;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.1);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 10%, transparent);
 }
 
 /* Forms */
@@ -434,7 +452,7 @@ textarea {
   padding: 6px 8px;
   border: none;
   border-radius: 8px;
-  background: #f9fafb;
+  background: var(--field);
   font: inherit;
   color: inherit;
   text-align: left;
@@ -453,7 +471,7 @@ textarea {
   justify-content: center;
 }
 .set-no.warm {
-  background: #fef3c7;
+  background: var(--gold-soft);
   color: var(--gold);
 }
 .set-main {
@@ -478,11 +496,11 @@ textarea {
   white-space: nowrap;
 }
 .tag.pr {
-  background: #fef3c7;
+  background: var(--gold-soft);
   color: var(--gold);
 }
 .tag.live {
-  background: #dcfce7;
+  background: var(--success-soft);
   color: var(--success);
 }
 .history-sets {
@@ -518,7 +536,7 @@ textarea {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 12%, transparent);
   display: flex;
   flex-direction: column;
   min-width: 190px;
@@ -548,12 +566,12 @@ textarea {
   width: calc(100% - 16px);
   max-width: 624px;
   bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 8px);
-  background: #111827;
-  color: #fff;
+  background: var(--inverse);
+  color: var(--on-inverse);
   border-radius: var(--radius);
   overflow: hidden;
   z-index: 15;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--shadow) 25%, transparent);
 }
 .rest-bar.done {
   background: var(--success);
@@ -561,7 +579,7 @@ textarea {
 .rest-progress {
   position: absolute;
   inset: 0 auto 0 0;
-  background: rgb(255 255 255 / 0.12);
+  background: color-mix(in srgb, var(--on-inverse) 12%, transparent);
   transition: width 0.25s linear;
 }
 .rest-content {
@@ -588,23 +606,23 @@ textarea {
   font-weight: 700;
 }
 .rest-time .muted {
-  color: rgb(255 255 255 / 0.6);
+  color: color-mix(in srgb, var(--on-inverse) 60%, transparent);
   font-size: 1rem;
 }
 .rest-bar .pill-btn {
-  background: rgb(255 255 255 / 0.15);
+  background: color-mix(in srgb, var(--on-inverse) 15%, transparent);
   border-color: transparent;
-  color: #fff;
+  color: var(--on-inverse);
 }
 .rest-bar .icon-btn {
-  color: #fff;
+  color: var(--on-inverse);
 }
 
 /* Modal (bottom sheet on mobile) */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgb(0 0 0 / 0.4);
+  background: color-mix(in srgb, var(--shadow) 40%, transparent);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -711,7 +729,7 @@ textarea {
   border-radius: 8px;
   padding: 4px 8px;
   font-size: 0.8rem;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 0.1);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--shadow) 10%, transparent);
 }
 .chart-empty {
   padding: 40px 0;
