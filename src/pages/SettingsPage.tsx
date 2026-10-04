@@ -99,23 +99,34 @@ export function SettingsPage() {
           <input type="checkbox" checked={s.autoRestTimer} onChange={(e) => setSetting('autoRestTimer', e.target.checked)} />
           Show rest timer automatically after each set
         </label>
-        <label>
-          Default rest target (seconds)
-          <input
-            inputMode="numeric"
-            defaultValue={s.defaultRestSec}
-            key={s.defaultRestSec}
-            onBlur={(e) => {
-              const n = parseInt(e.target.value, 10)
-              if (Number.isFinite(n) && n >= 0) void setSetting('defaultRestSec', n)
-            }}
-          />
+        <label className="check">
+          <input type="checkbox" checked={!s.noRestTarget} onChange={(e) => setSetting('noRestTarget', !e.target.checked)} />
+          Use a rest target
         </label>
-        <p className="muted small">Each exercise can override this (edit the exercise).</p>
+        {s.noRestTarget ? (
+          <p className="muted small">The timer just counts up – no target, progress bar or alert.</p>
+        ) : (
+          <>
+            <label>
+              Default rest target (seconds)
+              <input
+                inputMode="numeric"
+                defaultValue={s.defaultRestSec}
+                key={s.defaultRestSec}
+                onBlur={(e) => {
+                  const n = parseInt(e.target.value, 10)
+                  if (Number.isFinite(n) && n >= 0) void setSetting('defaultRestSec', n)
+                }}
+              />
+            </label>
+            <p className="muted small">Each exercise can override this (edit the exercise).</p>
+          </>
+        )}
         <label className="check">
           <input
             type="checkbox"
             checked={s.restSound}
+            disabled={s.noRestTarget}
             onChange={(e) => {
               unlockAudio()
               void setSetting('restSound', e.target.checked)
@@ -124,7 +135,7 @@ export function SettingsPage() {
           Sound when rest is over
         </label>
         <label className="check">
-          <input type="checkbox" checked={s.restVibrate} onChange={(e) => setSetting('restVibrate', e.target.checked)} disabled={!canVibrate()} />
+          <input type="checkbox" checked={s.restVibrate} onChange={(e) => setSetting('restVibrate', e.target.checked)} disabled={!canVibrate() || s.noRestTarget} />
           Vibrate when rest is over {!canVibrate() && <span className="muted small">(not supported on this device)</span>}
         </label>
         <button

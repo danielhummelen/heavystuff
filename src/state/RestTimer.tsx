@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { beep, vibrate } from '../lib/alerts'
 import { useProfile } from './ProfileContext'
 
@@ -38,7 +38,7 @@ function load(): RestState | null {
 
 export function RestTimerProvider({ children }: { children: ReactNode }) {
   const { profile } = useProfile()
-  const [rest, setRest] = useState<RestState | null>(load)
+  const [stored, setRest] = useState<RestState | null>(load)
   const [now, setNow] = useState(Date.now())
   const settings = useRef(profile.settings)
   useEffect(() => {
@@ -50,6 +50,13 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
     else localStorage.removeItem(KEY)
     setRest(next)
   }, [])
+
+  // Disabling targets also applies to a timer that's already running.
+  const noTarget = !!profile.settings.noRestTarget
+  const rest = useMemo(
+    () => (stored && noTarget && stored.targetSec != null ? { ...stored, targetSec: null } : stored),
+    [stored, noTarget],
+  )
 
   useEffect(() => {
     if (!rest) return
@@ -69,7 +76,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
   const start = useCallback(
     (targetSec: number | null, label: string) => {
       setNow(Date.now())
-      update({ startedAt: Date.now(), targetSec, label, alerted: false })
+      update({ startedAt: Date.now(), targetSec: settings.current.noRestTarget ? null : targetSec, label, alerted: false })
     },
     [update],
   )

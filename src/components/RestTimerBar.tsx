@@ -20,12 +20,16 @@ export function RestTimerBar() {
             {target != null && <span className="muted"> / {formatDuration(target)}</span>}
           </span>
         </div>
-        <button className="pill-btn" onClick={() => adjust(-15)} aria-label="15 seconds less">
-          −15
-        </button>
-        <button className="pill-btn" onClick={() => adjust(15)} aria-label="15 seconds more">
-          +15
-        </button>
+        {target != null && (
+          <>
+            <button className="pill-btn" onClick={() => adjust(-15)} aria-label="15 seconds less">
+              −15
+            </button>
+            <button className="pill-btn" onClick={() => adjust(15)} aria-label="15 seconds more">
+              +15
+            </button>
+          </>
+        )}
         <button className="icon-btn" onClick={stop} aria-label="Close rest timer">
           ✕
         </button>

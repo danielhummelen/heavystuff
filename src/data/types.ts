@@ -3,6 +3,8 @@
 
 export interface ProfileSettings {
   defaultRestSec: number
+  /** When true the rest timer only counts up (no target, progress bar or alert). Missing = false. */
+  noRestTarget?: boolean
   autoRestTimer: boolean
   restSound: boolean
   restVibrate: boolean
@@ -121,6 +123,7 @@ export interface ExportData {
 
 export const DEFAULT_SETTINGS: ProfileSettings = {
   defaultRestSec: 90,
+  noRestTarget: false,
   autoRestTimer: true,
   restSound: false,
   restVibrate: false,
