@@ -783,3 +783,12 @@ input[type='datetime-local'] {
 .banner .link-btn {
   padding: 0;
 }
+.exercise-card {
+  scroll-margin-top: 72px;
+}
+.exercise-card.collapsed {
+  cursor: pointer;
+}
+.exercise-card.collapsed .set-row.static {
+  cursor: pointer;
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { store, type Exercise, type Session, type SessionExercise, type WorkoutSet } from '../data'
 import { useQuery } from '../data/useQuery'
@@ -19,14 +19,25 @@ interface Props {
   sets: WorkoutSet[]
   isFirst: boolean
   isLast: boolean
+  /** Compact read-only view (another exercise is open in the active session). Tapping it calls onFocus. */
+  collapsed?: boolean
+  onFocus?: () => void
 }
 
-export function ExerciseCard({ session, se, exercise, sets, isFirst, isLast }: Props) {
+export function ExerciseCard({ session, se, exercise, sets, isFirst, isLast, collapsed = false, onFocus }: Props) {
   const { profile } = useProfile()
   const rest = useRestTimer()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const isActive = session.status === 'active'
+  const ref = useRef<HTMLElement>(null)
+
+  const open = () => {
+    if (!collapsed) return
+    setEditingId(null)
+    onFocus?.()
+    requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
 
   const history = useQuery(() => store.listSetsForExercise(profile.id, exercise.id), [profile.id, exercise.id])
 
@@ -81,15 +92,25 @@ export function ExerciseCard({ session, se, exercise, sets, isFirst, isLast }: P
   let workingNo = 0
 
   return (
-    <section className="card">
+    <section
+      ref={ref}
+      className={`card exercise-card${collapsed ? ' collapsed' : ''}`}
+      {...(collapsed && {
+        role: 'button',
+        tabIndex: 0,
+        'aria-label': `Open ${exercise.name}`,
+        onClick: open,
+        onKeyDown: (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), open()),
+      })}
+    >
       <header className="card-header">
         <div>
           <h3>{exercise.name}</h3>
-          <Link to={`/exercise/${exercise.id}`} className="muted small">
+          <Link to={`/exercise/${exercise.id}`} className="muted small" onClick={(e) => e.stopPropagation()}>
             {exercise.category} · History & chart ›
           </Link>
         </div>
-        <div className="menu-wrap">
+        <div className="menu-wrap" onClick={(e) => e.stopPropagation()}>
           <button className="icon-btn" aria-label="Exercise options" onClick={() => setMenuOpen(!menuOpen)}>
             ⋯
           </button>
@@ -110,7 +131,7 @@ export function ExerciseCard({ session, se, exercise, sets, isFirst, isLast }: P
         </div>
       </header>
 
-      {previous && (
+      {!collapsed && previous && (
         <p className="previous small">
           <span className="muted">Last ({formatShortDate(previous.date)}): </span>
           {previous.sets.map((s) => setText(s, exercise) + (s.isWarmup ? ' (W)' : '')).join(' · ')}
@@ -121,6 +142,17 @@ export function ExerciseCard({ session, se, exercise, sets, isFirst, isLast }: P
         <ol className="set-list">
           {sets.map((s) => {
             const label = s.isWarmup ? 'W' : String(++workingNo)
+            if (collapsed)
+              return (
+                <li key={s.id} className="set-row static">
+                  <span className={`set-no ${s.isWarmup ? 'warm' : ''}`}>{label}</span>
+                  <span className="set-main">{setText(s, exercise)}</span>
+                  <span className="set-tags">
+                    <SetTags set={s} pr={prs.get(s.id)} />
+                  </span>
+                  {s.notes && <span className="set-notes muted small">{s.notes}</span>}
+                </li>
+              )
             return editingId === s.id ? (
               <li key={s.id} className="editing">
                 <SetForm
@@ -148,7 +180,9 @@ export function ExerciseCard({ session, se, exercise, sets, isFirst, isLast }: P
         </ol>
       )}
 
-      {!editingId && (
+      {collapsed && sets.length === 0 && <p className="muted small">No sets yet · tap to start</p>}
+
+      {!collapsed && !editingId && (
         <SetForm key={`${sets.length}-${history ? 1 : 0}`} exercise={exercise} initial={prefill} submitLabel={`Record set ${sets.length + 1}`} onSubmit={record} />
       )}
     </section>

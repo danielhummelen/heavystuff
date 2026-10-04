@@ -55,7 +55,9 @@ function makeSE(session: Session, exerciseId: string, order: number): SessionExe
 export async function addExerciseToSession(session: Session, exerciseId: string) {
   const list = await store.listSessionExercises(session.id)
   const order = list.length ? Math.max(...list.map((s) => s.order)) + 1 : 0
-  await store.saveSessionExercises([makeSE(session, exerciseId, order)])
+  const se = makeSE(session, exerciseId, order)
+  await store.saveSessionExercises([se])
+  return se.id
 }
 
 export async function moveSessionExercise(sessionId: string, id: string, dir: -1 | 1) {

@@ -17,6 +17,7 @@ export function SessionEditor({ session }: { session: Session }) {
   const navigate = useNavigate()
   const [picking, setPicking] = useState(false)
   const [showNotes, setShowNotes] = useState(!!session.notes)
+  const [focusedId, setFocusedId] = useState<string | null>(null)
   const isActive = session.status === 'active'
 
   const data = useQuery(async () => {
@@ -71,6 +72,14 @@ export function SessionEditor({ session }: { session: Session }) {
     await saveSessionAsTemplate(session, name.trim())
     alert('Template saved')
   }
+
+  // In an active session only one exercise is "open" for logging; default to the one with the latest set.
+  const focusId = (() => {
+    if (!isActive || !data?.ses.length) return null
+    if (focusedId && data.ses.some((s) => s.id === focusedId)) return focusedId
+    const latest = data.sets.reduce<(typeof data.sets)[number] | null>((a, s) => (!a || s.completedAt > a.completedAt ? s : a), null)
+    return latest?.sessionExerciseId ?? data.ses[0].id
+  })()
 
   const totalSets = data?.sets.filter((s) => !s.isWarmup).length ?? 0
   const volume = data ? sessionVolume(data.sets) : 0
@@ -141,6 +150,8 @@ export function SessionEditor({ session }: { session: Session }) {
             sets={data.sets.filter((s) => s.sessionExerciseId === se.id)}
             isFirst={i === 0}
             isLast={i === data.ses.length - 1}
+            collapsed={focusId != null && focusId !== se.id}
+            onFocus={() => setFocusedId(se.id)}
           />
         )
       })}
@@ -167,7 +178,7 @@ export function SessionEditor({ session }: { session: Session }) {
           onClose={() => setPicking(false)}
           onPick={async (ex) => {
             setPicking(false)
-            await addExerciseToSession(session, ex.id)
+            setFocusedId(await addExerciseToSession(session, ex.id))
             requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }))
           }}
         />
