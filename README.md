@@ -33,7 +33,7 @@ npm run build      # production build in dist/ (static, deploy anywhere)
 7. **Merge to `main`** → Vercel deploys to https://heavystuff.vercel.app automatically.
 
 ## Architecture
-- React + TypeScript + Vite, `vite-plugin-pwa`, Recharts, HashRouter (works on any static host).
+- React + TypeScript + Vite, `vite-plugin-pwa`, HashRouter, hand-rolled SVG charts (works on any static host).
 - `src/data/store.ts` – `DataStore` interface. **All UI data access goes through it.**
 - `src/data/dexieStore.ts` – IndexedDB implementation (Dexie). Notifies subscribers on change (also across tabs) and
   records every write in an `outbox` table for syncing.

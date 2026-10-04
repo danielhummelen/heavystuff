@@ -4,7 +4,7 @@ Guidance for AI coding agents working on Heavystuff. Read `README.md` for featur
 
 ## What this is
 Mobile-first, offline-capable PWA for logging weightlifting sessions. React 19 + TypeScript + Vite, Dexie (IndexedDB),
-Recharts, `vite-plugin-pwa`. Cloud sync + Google sign-in via Supabase. Hosted on Vercel (auto-deploys `main`).
+`vite-plugin-pwa`, hand-rolled SVG charts (no chart lib). Cloud sync + Google sign-in via Supabase. Hosted on Vercel (auto-deploys `main`).
 
 ## Commands
 ```bash

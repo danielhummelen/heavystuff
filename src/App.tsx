@@ -11,7 +11,7 @@ import { WorkoutPage } from './pages/WorkoutPage'
 import { ProfileProvider } from './state/ProfileContext'
 import { RestTimerProvider } from './state/RestTimer'
 
-// Chart pages pull in recharts, so load them on demand.
+// Chart pages are loaded on demand.
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const ExerciseDetailPage = lazy(() => import('./pages/ExerciseDetailPage').then((m) => ({ default: m.ExerciseDetailPage })))
 
