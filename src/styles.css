@@ -503,8 +503,8 @@ textarea {
   font-size: 2rem;
   font-weight: 700;
 }
-.session-actions {
-  justify-content: center;
+.session-head .title-input {
+  min-width: 0;
 }
 
 /* Menu */

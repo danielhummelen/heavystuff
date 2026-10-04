@@ -1,6 +1,26 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
+import { autoFinishStaleSession } from '../lib/sessionOps'
 import { useProfile } from '../state/ProfileContext'
+import { useRestTimer } from '../state/RestTimer'
 import { RestTimerBar } from './RestTimerBar'
+
+function useAutoFinishStaleSession(profileId: string) {
+  const { stop } = useRestTimer()
+  useEffect(() => {
+    const check = async () => {
+      if (document.visibilityState !== 'visible') return
+      if (await autoFinishStaleSession(profileId)) stop()
+    }
+    void check()
+    const timer = setInterval(check, 60_000)
+    document.addEventListener('visibilitychange', check)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', check)
+    }
+  }, [profileId, stop])
+}
 
 function Icon({ children }: { children: React.ReactNode }) {
   return (
@@ -63,7 +83,8 @@ const tabs = [
 ]
 
 export function Layout() {
-  const { sync, signIn } = useProfile()
+  const { profile, sync, signIn } = useProfile()
+  useAutoFinishStaleSession(profile.id)
   return (
     <div className="app">
       <main className="content">

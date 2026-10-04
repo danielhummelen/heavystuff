@@ -3,7 +3,7 @@
 A mobile-first PWA for tracking weightlifting sessions.
 
 ## Features
-- **Sessions**: start/time a workout (survives reloads), name + notes, finish/discard, log/edit past workouts.
+- **Sessions**: start/time a workout (survives reloads), name + notes, finish/discard (auto-finished at the last set after 2 h without activity), log/edit past workouts.
 - **Exercises & sets**: preset library (grouped by muscle group) + custom exercises; record sets with weight (kg) and reps,
   prefilled from your last set; optional RPE, RIR, warm-up, drop set, to-failure and notes. Tap a set to edit/delete.
 - **Rest timer**: count-up with optional target (per-exercise or profile default), ±15s, optional sound/vibration (off by default).

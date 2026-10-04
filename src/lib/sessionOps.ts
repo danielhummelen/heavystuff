@@ -73,6 +73,27 @@ export async function finishSession(session: Session) {
   await store.saveSession({ ...session, status: 'done', endedAt: Date.now() })
 }
 
+export const AUTO_FINISH_AFTER_MS = 2 * 60 * 60 * 1000
+
+/**
+ * Ends an active session that has seen no activity (new set or exercise) for AUTO_FINISH_AFTER_MS.
+ * It's finished at the time of the last set, or discarded if no sets were logged.
+ */
+export async function autoFinishStaleSession(profileId: string, now = Date.now()): Promise<'finished' | 'discarded' | null> {
+  const session = await store.getActiveSession(profileId)
+  if (!session) return null
+  const [sets, ses] = await Promise.all([store.listSetsForSession(session.id), store.listSessionExercises(session.id)])
+  const lastSet = Math.max(0, ...sets.map((s) => s.completedAt))
+  const lastActivity = Math.max(session.startedAt, lastSet, ...ses.map((s) => s.createdAt))
+  if (now - lastActivity < AUTO_FINISH_AFTER_MS) return null
+  if (!sets.length) {
+    await store.deleteSession(session.id)
+    return 'discarded'
+  }
+  await store.saveSession({ ...session, status: 'done', endedAt: lastSet })
+  return 'finished'
+}
+
 export async function saveSessionAsTemplate(session: Session, name: string) {
   const list = await store.listSessionExercises(session.id)
   const now = Date.now()

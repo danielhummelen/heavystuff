@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { store, type Session } from '../data'
 import { useQuery } from '../data/useQuery'
@@ -18,7 +18,16 @@ export function SessionEditor({ session }: { session: Session }) {
   const [picking, setPicking] = useState(false)
   const [showNotes, setShowNotes] = useState(!!session.notes)
   const [focusedId, setFocusedId] = useState<string | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
   const isActive = session.status === 'active'
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = (e: PointerEvent) => !menuRef.current?.contains(e.target as Node) && setMenuOpen(false)
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
+  }, [menuOpen])
 
   const data = useQuery(async () => {
     const [ses, sets, exercises] = await Promise.all([
@@ -87,13 +96,28 @@ export function SessionEditor({ session }: { session: Session }) {
   return (
     <div className="session">
       <div className="card session-head">
-        <input
-          className="title-input"
-          defaultValue={session.name}
-          key={session.name}
-          onBlur={(e) => e.target.value.trim() && e.target.value !== session.name && save({ name: e.target.value.trim() })}
-          aria-label="Session name"
-        />
+        <div className="row gap">
+          <input
+            className="title-input grow"
+            defaultValue={session.name}
+            key={session.name}
+            onBlur={(e) => e.target.value.trim() && e.target.value !== session.name && save({ name: e.target.value.trim() })}
+            aria-label="Session name"
+          />
+          <div className="menu-wrap" ref={menuRef}>
+            <button className="icon-btn" aria-label="Session options" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>
+              ⋯
+            </button>
+            {menuOpen && (
+              <div className="menu" onClick={() => setMenuOpen(false)}>
+                <button onClick={saveTemplate}>Save as template</button>
+                <button className="danger-text" onClick={() => discard()}>
+                  {isActive ? 'Discard workout' : 'Delete session'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         {isActive ? (
           <div className="row between">
             <span className="big-timer">
@@ -161,15 +185,6 @@ export function SessionEditor({ session }: { session: Session }) {
       <button className="btn primary block big" onClick={() => setPicking(true)}>
         + Add exercise
       </button>
-
-      <div className="row gap wrap session-actions">
-        <button className="btn" onClick={saveTemplate}>
-          Save as template
-        </button>
-        <button className="btn danger" onClick={() => discard()}>
-          {isActive ? 'Discard workout' : 'Delete session'}
-        </button>
-      </div>
 
       {picking && (
         <ExercisePicker
