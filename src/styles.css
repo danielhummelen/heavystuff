@@ -614,11 +614,14 @@ textarea {
   background: var(--card);
   width: 100%;
   max-width: 640px;
-  max-height: 90dvh;
+  max-height: 90%;
   border-radius: 18px 18px 0 0;
   display: flex;
   flex-direction: column;
   animation: slide-up 0.18s ease-out;
+}
+.modal.tall {
+  height: 90%;
 }
 .modal-header {
   display: flex;

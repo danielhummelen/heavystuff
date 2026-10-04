@@ -38,7 +38,7 @@ export function ExercisePicker({ profileId, onPick, onClose, excludeIds = [] }: 
     )
 
   return (
-    <Modal title="Add exercise" onClose={onClose}>
+    <Modal title="Add exercise" onClose={onClose} tall>
       <input className="search" type="search" placeholder="Search exercises…" value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className="chips">
         <button className={`chip ${!category ? 'active' : ''}`} onClick={() => setCategory(null)}>
