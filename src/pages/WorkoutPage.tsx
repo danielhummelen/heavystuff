@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { store, type Template } from '../data'
 import { useQuery } from '../data/useQuery'
@@ -7,9 +8,12 @@ import { formatDate } from '../lib/format'
 import { createPastSession, startSession } from '../lib/sessionOps'
 import { useProfile } from '../state/ProfileContext'
 
+const TEMPLATE_PREVIEW_COUNT = 3
+
 export function WorkoutPage() {
   const { profile } = useProfile()
   const navigate = useNavigate()
+  const [showAllTemplates, setShowAllTemplates] = useState(false)
   const data = useQuery(async () => {
     const [active, templates, sessions, exercises] = await Promise.all([
       store.getActiveSession(profile.id),
@@ -31,6 +35,7 @@ export function WorkoutPage() {
     )
 
   const start = (t?: Template) => startSession(profile, t)
+  const visibleTemplates = showAllTemplates ? data.templates : data.templates.slice(0, TEMPLATE_PREVIEW_COUNT)
   const logPast = async () => {
     const s = await createPastSession(profile)
     navigate(`/history/${s.id}?edit=1`)
@@ -45,7 +50,7 @@ export function WorkoutPage() {
 
       <section className="card">
         <div className="row between">
-          <h2>Templates</h2>
+          <h2>Start from template</h2>
           <button className="link-btn" onClick={() => navigate('/settings/templates')}>
             Manage
           </button>
@@ -54,7 +59,7 @@ export function WorkoutPage() {
           <p className="muted small">No templates yet. Create one (e.g. “Push day”) or save a workout as a template.</p>
         ) : (
           <ul className="list">
-            {data.templates.map((t) => (
+            {visibleTemplates.map((t) => (
               <li key={t.id}>
                 <button className="list-item" onClick={() => start(t)}>
                   <span>
@@ -68,6 +73,11 @@ export function WorkoutPage() {
               </li>
             ))}
           </ul>
+        )}
+        {data.templates.length > TEMPLATE_PREVIEW_COUNT && (
+          <button className="link-btn" onClick={() => setShowAllTemplates((v) => !v)}>
+            {showAllTemplates ? 'Show less' : `Show all (${data.templates.length})`}
+          </button>
         )}
       </section>
 
