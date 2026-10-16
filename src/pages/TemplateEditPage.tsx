@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { store, type Template } from '../data'
 import { useQuery } from '../data/useQuery'
@@ -12,6 +12,7 @@ export function TemplateEditPage() {
   const { profile } = useProfile()
   const navigate = useNavigate()
   const [picking, setPicking] = useState(false)
+  const nameRef = useRef<HTMLInputElement>(null)
   const data = useQuery(async () => {
     const [template, exercises] = await Promise.all([store.getTemplate(id), store.listExercises(profile.id)])
     return { template: template ?? null, exercises: new Map(exercises.map((e) => [e.id, e])) }
@@ -34,6 +35,12 @@ export function TemplateEditPage() {
     navigate('/')
   }
 
+  const saveAndClose = async () => {
+    const name = nameRef.current?.value.trim()
+    if (name && name !== t.name) await save({ name })
+    navigate('/settings/templates')
+  }
+
   const remove = async () => {
     if (!confirm(`Delete template “${t.name}”?`)) return
     await store.deleteTemplate(t.id)
@@ -45,6 +52,7 @@ export function TemplateEditPage() {
       <PageHeader title="Template" back />
       <div className="card">
         <input
+          ref={nameRef}
           className="title-input"
           defaultValue={t.name}
           key={t.name}
@@ -76,7 +84,10 @@ export function TemplateEditPage() {
           + Add exercise
         </button>
       </div>
-      <button className="btn primary block big" onClick={start} disabled={!t.exerciseIds.length}>
+      <button className="btn primary block big" onClick={saveAndClose}>
+        ✓ Save & close
+      </button>
+      <button className="btn block" onClick={start} disabled={!t.exerciseIds.length}>
         ▶ Start workout from template
       </button>
       <button className="btn danger block" onClick={remove}>
