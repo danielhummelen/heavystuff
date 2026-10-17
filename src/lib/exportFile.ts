@@ -12,6 +12,29 @@ export function download(filename: string, content: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
+/** Narrows a profile export to a single session (and only the exercises it uses). */
+export function sessionExport(data: ExportData, sessionId: string): ExportData {
+  const sessionExercises = data.sessionExercises.filter((se) => se.sessionId === sessionId)
+  const sets = data.sets.filter((s) => s.sessionId === sessionId)
+  const exerciseIds = new Set([...sessionExercises.map((se) => se.exerciseId), ...sets.map((s) => s.exerciseId)])
+  return {
+    ...data,
+    exercises: data.exercises.filter((e) => exerciseIds.has(e.id)),
+    templates: [],
+    // Templates aren't included, so drop the link to avoid a dangling reference on import.
+    sessions: data.sessions.filter((s) => s.id === sessionId).map((s) => ({ ...s, templateId: null })),
+    sessionExercises,
+    sets,
+  }
+}
+
+/** Safe filename fragment, e.g. "Push day #2" → "push-day-2". */
+export const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'session'
+
 const csvCell = (v: unknown) => {
   const s = v == null ? '' : String(v)
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
