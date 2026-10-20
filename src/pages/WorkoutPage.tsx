@@ -4,6 +4,7 @@ import { store, type Template } from '../data'
 import { useQuery } from '../data/useQuery'
 import { PageHeader } from '../components/Layout'
 import { SessionEditor } from '../components/SessionEditor'
+import { TemplatePreview } from '../components/TemplatePreview'
 import { formatDate } from '../lib/format'
 import { createPastSession, startSession } from '../lib/sessionOps'
 import { useProfile } from '../state/ProfileContext'
@@ -14,6 +15,7 @@ export function WorkoutPage() {
   const { profile } = useProfile()
   const navigate = useNavigate()
   const [showAllTemplates, setShowAllTemplates] = useState(false)
+  const [preview, setPreview] = useState<Template | null>(null)
   const data = useQuery(async () => {
     const [active, templates, sessions, exercises] = await Promise.all([
       store.getActiveSession(profile.id),
@@ -60,15 +62,17 @@ export function WorkoutPage() {
         ) : (
           <ul className="list">
             {visibleTemplates.map((t) => (
-              <li key={t.id}>
-                <button className="list-item" onClick={() => start(t)}>
+              <li key={t.id} className="template-row">
+                <button className="list-item" onClick={() => setPreview(t)}>
                   <span>
                     <strong>{t.name}</strong>
                     <span className="muted small block-text">
                       {t.exerciseIds.map((id) => data.exNames.get(id)).filter(Boolean).join(', ') || 'No exercises'}
                     </span>
                   </span>
-                  <span className="accent">Start ›</span>
+                </button>
+                <button className="link-btn accent" onClick={() => start(t)}>
+                  Start ›
                 </button>
               </li>
             ))}
@@ -97,6 +101,17 @@ export function WorkoutPage() {
       <button className="btn block" onClick={logPast}>
         + Log a past workout
       </button>
+
+      {preview && (
+        <TemplatePreview
+          template={preview}
+          onClose={() => setPreview(null)}
+          onStart={() => {
+            setPreview(null)
+            start(preview)
+          }}
+        />
+      )}
     </>
   )
 }

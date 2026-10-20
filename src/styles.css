@@ -834,3 +834,22 @@ input[type='datetime-local'] {
 .exercise-card.collapsed .set-row.static {
   cursor: pointer;
 }
+.template-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.template-row:last-child {
+  border-bottom: none;
+}
+.template-row .list-item {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+}
+.template-row .link-btn {
+  align-self: stretch;
+  padding: 0 0 0 8px;
+  font-weight: 600;
+}
